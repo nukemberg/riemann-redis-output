@@ -1,0 +1,4 @@
+{
+  :require riemann-flapjack-output.core
+  :plugin "flapjack"
+}
