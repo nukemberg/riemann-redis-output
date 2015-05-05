@@ -8,7 +8,7 @@
 
 (def default-rename-keys-map {:service :check :host :entity :metric :perfdata :description :summary})
 (def default-event-fields {:type "service" :details "" :state "ok" :summary "None"})
-(def allowed-event-fields [:check :entity :prefdata :details :summary :time :type :tags :state])
+(def allowed-event-fields [:check :entity :perfdata :details :summary :time :type :tags :state])
 (def default-opts {:rename-keys-map default-rename-keys-map :buff-size 1000 :conn-spec {}})
 
 (def transcode-event
@@ -22,7 +22,7 @@
       #(into {} (filter (comp not nil? second) %)) ; remove nil fields before we rename and merge with defaults
       #(assoc % :time (int (:time %))))) ; flapjack wants time as integer
 
-(defn- consume-until-empty
+(defn- ^{:testable true} consume-until-empty
   "Consume messages from a queue until no more are available or `limit` messages have been consumed.
    Returns a vector of consumed messages"
   [queue limit]
