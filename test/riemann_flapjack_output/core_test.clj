@@ -15,7 +15,7 @@
 
 (fact "`transcode-event` should transcode riemann event map to flapjack compatible map"
   (transcode-event {:host ..host.. :service ..service.. :time 1430857064.230 
-                          :metric ..metric.. :description ..description.. :state ..state..}) 
+                          :metric ..metric.. :description ..description.. :state ..state.. :extra-field ..extra..}) 
                 => 
                 {:entity ..host.. :check ..service.. :state ..state.. 
                   :time 1430857064 :summary ..description.. :perfdata ..metric..
