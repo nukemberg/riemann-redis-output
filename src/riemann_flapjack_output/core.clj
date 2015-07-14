@@ -16,11 +16,12 @@
   This is the default transcoding function for the flapjack output.
   "
   (comp
-      #(select-keys % allowed-event-fields) ; flapjack doesn't like fields it doesn't know
       (partial merge default-event-fields)
+      #(assoc % :perfdata (format "metric=%f" (:perfdata %))) ; flapjack wants perfdata as nagios string
+      #(assoc % :time (int (:time %))) ; flapjack wants time as integer
+      #(select-keys % allowed-event-fields) ; flapjack doesn't like fields it doesn't know
       #(rename-keys % default-rename-keys-map)
-      #(into {} (filter (comp not nil? second) %)) ; remove nil fields before we rename and merge with defaults
-      #(assoc % :time (int (:time %))))) ; flapjack wants time as integer
+      #(into {} (filter (comp not nil? second) %)))) ; remove nil fields before we rename and merge with defaults
 
 (defn- ^{:testable true} consume-until-empty
   "Consume messages from a queue until no more are available or `limit` messages have been consumed.
