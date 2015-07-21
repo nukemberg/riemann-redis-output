@@ -7,4 +7,4 @@
   	:dev {:dependencies [
   			[org.clojure/clojure "1.6.0"]
   			[midje "1.6.3" :exclusions [org.clojure/clojure]]
-        	[riemann "0.2.9"]]}})
+                      	[riemann "0.2.10"]]}})
