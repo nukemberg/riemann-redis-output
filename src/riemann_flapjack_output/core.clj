@@ -17,7 +17,7 @@
   "
   (comp
       (partial merge default-event-fields)
-      #(assoc % :perfdata (format "metric=%f" (:perfdata %))) ; flapjack wants perfdata as nagios string
+      #(if (nil? (:perfdata %)) % (assoc % :perfdata (format "metric=%f" (float (:perfdata %))))) ; flapjack wants perfdata as nagios string, convert if present
       #(assoc % :time (int (:time %))) ; flapjack wants time as integer
       #(select-keys % allowed-event-fields) ; flapjack doesn't like fields it doesn't know
       #(rename-keys % default-rename-keys-map)
