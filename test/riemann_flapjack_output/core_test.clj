@@ -20,4 +20,10 @@
                 {:entity ..host.. :check ..service.. :state ..state.. 
                   :time 1430857064 :summary ..description.. :perfdata "metric=12312312.000000"
                   :type "service" :details ""}
+  (transcode-event {:host ..host.. :service ..service.. :time 1430857064.230 
+                          :metric 12312312 :description ..description.. :state ..state.. :extra-field ..extra..}) 
+                => 
+                {:entity ..host.. :check ..service.. :state ..state.. 
+                  :time 1430857064 :summary ..description.. :perfdata "metric=12312312.000000"
+                  :type "service" :details ""}
   )
