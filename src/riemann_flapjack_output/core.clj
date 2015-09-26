@@ -48,7 +48,7 @@
 (defprotocol FlapjackClient
   (send-event [service event]))
 
-(defrecord RedisFlusherService [running core queue buff-size server-conn]
+(defrecord RedisFlusherService [running core queue buff-size server-conn transcode]
   ServiceEquiv
   (equiv? [this other] (= [buff-size server-conn] (select-keys other [:buff-size :server-conn])))
   Service
@@ -65,7 +65,8 @@
   (reload! [this new-core] (reset! core new-core))
   (conflict? [this other] (instance? RedisFlusherService other))
   FlapjackClient
-  (send-event [{queue :queue} event] (.put @queue (json/generate-string (transcode-event event)))))
+  (send-event [{queue :queue} event]
+    (.put @queue (transcode event))))
 
 (defn output
   "Get an event handler for flapjack. This function will start an asyncronous redis flusher RedisFlusherService.
@@ -82,10 +83,10 @@
   "
   ([] (output {}))
   ([opts]
-  (let [{:keys [conn-spec buff-size]} (merge default-opts opts)
+    (let [{:keys [conn-spec buff-size]} (merge default-opts opts)
         server-conn {:pool {} :spec conn-spec}
         transcode (comp json/generate-string (get opts :transcoder transcode-event))
         service (service!
-                  (RedisFlusherService. (atom false) (atom nil) (atom nil) buff-size server-conn)) ; start the sender loop in a thread
+                  (RedisFlusherService. (atom false) (atom nil) (atom nil) buff-size server-conn transcode)) ; start the sender loop in a thread
         ]
-    (partial send-event service))))
+      (partial send-event service))))
