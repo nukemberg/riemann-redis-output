@@ -23,7 +23,7 @@
       #(rename-keys % default-rename-keys-map)
       #(into {} (filter (comp not nil? second) %)))) ; remove nil fields before we rename and merge with defaults
 
-(defn- ^{:testable true} consume-until-empty
+(defn- consume-until-empty
   "Consume messages from a queue until no more are available or `limit` messages have been consumed.
    Returns a vector of consumed messages"
   [queue limit]
