@@ -1,7 +1,7 @@
 (ns riemann-redis-output.core
   (:require [taoensso.carmine :as car]
             [cheshire.core :as json]
-            [clojure.tools.logging :refer [error debug]]
+            [clojure.tools.logging :refer [error debugf]]
             [clojure.set :refer [rename-keys]]
             [riemann.service :refer [Service ServiceEquiv]]
             [riemann.config :refer [service!]]))
@@ -36,10 +36,11 @@
   "Send messages to redis. Consumes messages from queue"
   [queue server-conn flush-size redis-key]
   (try
-    (car/wcar server-conn
-      (doseq [^String event (consume-until-empty queue flush-size)]
-        (debug "Sending event to redis" event)
-        (car/lpush redis-key event)))
+    (let [events (consume-until-empty queue flush-size)]
+      (debugf "Flushing %d events to Redis" (count events))
+      (car/wcar server-conn
+                (doseq [events (partition-all 4 events)]
+                  (apply car/lpush redis-key events))))
     (catch Exception e
       (error e "Failed to send event to redis"))))
 
@@ -55,7 +56,7 @@
       (when-not @running
         (reset! running true)
         (let [new-queue (java.util.concurrent.ArrayBlockingQueue. buff-size)
-              flush-size (int (/ buff-size 2))
+              flush-size (max 40 (int (/ buff-size 2)))
               flusher-thread (Thread. #(while @running (redis-flush new-queue server-conn flush-size redis-key)))]
           (.start flusher-thread)
           (reset! queue new-queue)))))
