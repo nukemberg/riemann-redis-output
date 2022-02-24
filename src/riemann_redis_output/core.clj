@@ -9,7 +9,7 @@
 (def default-rename-keys-map {:service :check :host :entity :metric :perfdata :description :summary})
 (def default-event-fields {:type "service" :details "" :state "ok" :summary "None"})
 (def allowed-event-fields [:check :entity :perfdata :details :summary :time :type :tags :state])
-(def default-opts {:rename-keys-map default-rename-keys-map :buff-size 1000 :conn-spec {}})
+(def default-opts {:buff-size 1000 :conn-spec {} :key "riemann-events"})
 
 (def flapjack-encoder
   "Encode event to a flapjack compatible format. See http://flapjack.io/docs/1.0/development/DATA_STRUCTURES/ for details."
@@ -34,20 +34,19 @@
 ; for performance reasons we prefer to send events to redis using a pipeline. We therefor consume events from the queue in bulks using consume-until-empty
 (defn- redis-flush
   "Send messages to redis. Consumes messages from queue"
-  [queue server-conn flush-size]
-  {:pre [(> flush-size 0) (map? server-conn)]}
+  [queue server-conn flush-size redis-key]
   (try
     (car/wcar server-conn
       (doseq [^String event (consume-until-empty queue flush-size)]
         (debug "Sending event to redis" event)
-        (car/lpush "events" event)))
+        (car/lpush redis-key event)))
     (catch Exception e
       (error e "Failed to send event to redis"))))
 
 (defprotocol RedisClient
   (send-event [service event]))
 
-(defrecord RedisFlusherService [running core queue buff-size server-conn transcode]
+(defrecord RedisFlusherService [running core queue buff-size server-conn redis-key transcode]
   ServiceEquiv
   (equiv? [this other] (= [buff-size server-conn] (select-keys other [:buff-size :server-conn])))
   Service
@@ -57,7 +56,7 @@
         (reset! running true)
         (let [new-queue (java.util.concurrent.ArrayBlockingQueue. buff-size)
               flush-size (int (/ buff-size 2))
-              flusher-thread (Thread. #(while @running (redis-flush new-queue server-conn flush-size)))]
+              flusher-thread (Thread. #(while @running (redis-flush new-queue server-conn flush-size redis-key)))]
           (.start flusher-thread)
           (reset! queue new-queue)))))
   (stop! [this] (locking this (reset! running false)))
@@ -78,14 +77,15 @@
 
   :conn-spec - carmine spec, e.g. {:host \"redisserver\" :port 6379 :db 13}
   :buff-size - Event queue buffer size
+  :key - Redis key to push events to
   :encoder - the encoding function to convert event map to a string. Signature: (fn [event]) -> String. Defaults to cheshire/generate-string
   "
   ([] (output {}))
   ([opts]
-    (let [{:keys [conn-spec buff-size]} (merge default-opts opts)
+    (let [{:keys [conn-spec buff-size key]} (merge default-opts opts)
           server-conn {:pool {} :spec conn-spec}
           encoder (get opts :encoder json/generate-string)
           service (service!
-                   (RedisFlusherService. (atom false) (atom nil) (atom nil) buff-size server-conn encoder)) ; start the sender loop in a thread
+                   (RedisFlusherService. (atom false) (atom nil) (atom nil) buff-size server-conn key encoder)) ; start the sender loop in a thread
           ]
       (partial send-event service))))

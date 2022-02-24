@@ -38,7 +38,11 @@ A [Flapjack](http://flapjack.io/) encoder is provided as `flapjack-encoder` func
 Flapjack is aware of more fields which may be of use: :details, :type, :state. If they are not present they will be assigned default values.
 See Flapjack docs for more info on these fields.
 
+Additionally, set the Redis output key to "events":
 
+```clojure
+(def flapjack (redis-output/output {:key "events" :encoder redis-output/flapjack-encoder}))
+```
 ## Installing
 
 You will need to build this module for now and push it on riemann's classpath, for this
