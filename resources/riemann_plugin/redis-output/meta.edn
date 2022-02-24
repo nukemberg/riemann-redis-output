@@ -1,0 +1,4 @@
+{
+  :require riemann-redis-output.core
+  :plugin "redis-output"
+}

@@ -7,10 +7,12 @@ A riemann [Redis](https://redis.io/) plugin.
 In your riemann.config
 
 ```clojure
-
 (load-plugins) ; will load plugins from the classpath
 
-(redis/output)
+(def redis-out (redis-output/output))
+
+(streams
+    redis-out)
 
 ```
 
@@ -18,7 +20,8 @@ Or with options:
 
 ```clojure
 (load-plugins)
-(redis/output {:conn-spec {:host "redis" :port 6379 :db 13} :buff-size 1000 :encoder your-encoder})
+(def redis-out
+  (redis-output/output {:conn-spec {:host "redis" :port 6379 :db 13} :buff-size 1000 :encoder your-encoder}))
 ```
 
 Options:
