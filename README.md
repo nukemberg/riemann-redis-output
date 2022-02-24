@@ -1,6 +1,6 @@
-# riemann-flapjack-output
+# riemann-redis-output
 
-A riemann [Flapjack](http://flapjack.io/) plugin.
+A riemann [Redis](https://redis.io/) plugin.
 
 ## Usage
 
@@ -10,7 +10,7 @@ In your riemann.config
 
 (load-plugins) ; will load plugins from the classpath
 
-(flapjack/output)
+(redis/output)
 
 ```
 
@@ -18,17 +18,17 @@ Or with options:
 
 ```clojure
 (load-plugins)
-(flapjack/output {:conn-spec {:host "redis" :port 6379 :db 13} :buff-size 1000 :transcoder flapjack/transcode-event})
+(redis/output {:conn-spec {:host "redis" :port 6379 :db 13} :buff-size 1000 :encoder your-encoder})
 ```
 
 Options:
 - `:conn-spec` - [Carmine](https://github.com/ptaoussanis/carmine) redis connection spec. See Carmine docs for more info
 - `:buff-size` - Size of the internal event queue. Default is 1000. Events will be flushed asyncronously from queue to redis.
-- `:transcoder` - A function to convert Riemann event map to a Flapjack compatible structure. Defaults to `flapjack/transcode-event`, see the source for more info.
+- `:encoder` - A function to convert Riemann event map to a string. Defaults to `cheshire/generate-string` (JSON serialization), see the source for more info. 
 
-### Flapjack event fields:
+### Flapjack:
 
-By default, the transcoding function will rename keys as follows:
+A [Flapjack](http://flapjack.io/) encoder is provided as `flapjack-encoder` function; it will rename keys as follows:
 
 :service -> :check, :host -> :entity, :metric -> :perfdata, :description -> :summary
 
@@ -47,22 +47,21 @@ First build the project:
 lein uberjar
 ```
 
-The resulting artifact will be in `target/riemann-flapjack-output-standalone-0.0.1.jar`.
+The resulting artifact will be in `target/riemann-redis-output-standalone-0.0.2.jar`.
 You will need to push that jar on the machine(s) where riemann runs, for instance, in
-`/usr/lib/riemann/riemann-flapjack-output.jar`.
+`/usr/lib/riemann/riemann-redis-output.jar`.
 
 If you have installed riemann from a stock package you will only need to tweak
 `/etc/default/riemann` and change
 the line `EXTRA_CLASSPATH` to read:
 
 ```
-EXTRA_CLASSPATH=/usr/lib/riemann/riemann-flapjack-output.jar
+EXTRA_CLASSPATH=/usr/lib/riemann/riemann-redis-output.jar
 ```
 
 You can then use exposed functions, provided you have loaded the plugin in your configuration.
 
 ## License
 
-Copyright © 2014 Avishai Ish-Shalom
-
+Copyright © 2014, 2022 Avishai Ish-Shalom
 Distributed under the Apache V2 License

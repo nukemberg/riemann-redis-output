@@ -1,7 +1,7 @@
-(ns riemann-flapjack-output.core
+(ns riemann-redis-output.core
   (:require [taoensso.carmine :as car]
             [cheshire.core :as json]
-            [clojure.tools.logging :refer [error info debug]]
+            [clojure.tools.logging :refer [error debug]]
             [clojure.set :refer [rename-keys]]
             [riemann.service :refer [Service ServiceEquiv]]
             [riemann.config :refer [service!]]))
@@ -11,17 +11,16 @@
 (def allowed-event-fields [:check :entity :perfdata :details :summary :time :type :tags :state])
 (def default-opts {:rename-keys-map default-rename-keys-map :buff-size 1000 :conn-spec {}})
 
-(def transcode-event
-  "Transcode event to a flapjack compatible format. See http://flapjack.io/docs/1.0/development/DATA_STRUCTURES/ for details.
-  This is the default transcoding function for the flapjack output.
-  "
+(def flapjack-encoder
+  "Encode event to a flapjack compatible format. See http://flapjack.io/docs/1.0/development/DATA_STRUCTURES/ for details."
   (comp
-      (partial merge default-event-fields)
-      #(if (nil? (:perfdata %)) % (assoc % :perfdata (format "metric=%f" (float (:perfdata %))))) ; flapjack wants perfdata as nagios string, convert if present
-      #(assoc % :time (int (:time %))) ; flapjack wants time as integer
-      #(select-keys % allowed-event-fields) ; flapjack doesn't like fields it doesn't know
-      #(rename-keys % default-rename-keys-map)
-      #(into {} (filter (comp not nil? second) %)))) ; remove nil fields before we rename and merge with defaults
+   json/generate-string
+   (partial merge default-event-fields)
+   #(if (nil? (:perfdata %)) % (assoc % :perfdata (format "metric=%f" (float (:perfdata %))))) ; flapjack wants perfdata as nagios string, convert if present
+   #(assoc % :time (int (:time %))) ; flapjack wants time as integer
+   #(select-keys % allowed-event-fields) ; flapjack doesn't like fields it doesn't know
+   #(rename-keys % default-rename-keys-map)
+   #(into {} (filter (comp not nil? second) %)))) ; remove nil fields before we rename and merge with defaults
 
 (defn- consume-until-empty
   "Consume messages from a queue until no more are available or `limit` messages have been consumed.
@@ -43,9 +42,9 @@
         (debug "Sending event to redis" event)
         (car/lpush "events" event)))
     (catch Exception e
-      (error e "Failed to send event to flapjack"))))
+      (error e "Failed to send event to redis"))))
 
-(defprotocol FlapjackClient
+(defprotocol RedisClient
   (send-event [service event]))
 
 (defrecord RedisFlusherService [running core queue buff-size server-conn transcode]
@@ -64,12 +63,12 @@
   (stop! [this] (locking this (reset! running false)))
   (reload! [this new-core] (reset! core new-core))
   (conflict? [this other] (instance? RedisFlusherService other))
-  FlapjackClient
+  RedisClient
   (send-event [{queue :queue} event]
     (.put @queue (transcode event))))
 
 (defn output
-  "Get an event handler for flapjack. This function will start an asyncronous redis flusher RedisFlusherService.
+  "Get an event handler for Redis. This function will start an asyncronous Redis flusher RedisFlusherService.
   Usage:
 
   (output) ; -> simplest form, no options
@@ -79,14 +78,14 @@
 
   :conn-spec - carmine spec, e.g. {:host \"redisserver\" :port 6379 :db 13}
   :buff-size - Event queue buffer size
-  :transcoder - the transcoding function to covert event map to a flapjack compatible map. Signature: (fn [event]) -> hash-map. See `transcode-event` for more details
+  :encoder - the encoding function to convert event map to a string. Signature: (fn [event]) -> String. Defaults to cheshire/generate-string
   "
   ([] (output {}))
   ([opts]
     (let [{:keys [conn-spec buff-size]} (merge default-opts opts)
-        server-conn {:pool {} :spec conn-spec}
-        transcode (comp json/generate-string (get opts :transcoder transcode-event))
-        service (service!
-                  (RedisFlusherService. (atom false) (atom nil) (atom nil) buff-size server-conn transcode)) ; start the sender loop in a thread
-        ]
+          server-conn {:pool {} :spec conn-spec}
+          encoder (get opts :encoder json/generate-string)
+          service (service!
+                   (RedisFlusherService. (atom false) (atom nil) (atom nil) buff-size server-conn encoder)) ; start the sender loop in a thread
+          ]
       (partial send-event service))))
