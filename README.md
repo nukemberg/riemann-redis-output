@@ -9,7 +9,7 @@ In your riemann.config
 ```clojure
 (load-plugins) ; will load plugins from the classpath
 
-(def redis-out (redis-output/output))
+(def redis-out (redis-output/sink))
 
 (streams
     redis-out)
@@ -21,13 +21,26 @@ Or with options:
 ```clojure
 (load-plugins)
 (def redis-out
-  (redis-output/output {:conn-spec {:host "redis" :port 6379 :db 13} :buff-size 1000 :encoder your-encoder}))
+  (redis-output/sink {:conn-spec {:host "redis" :port 6379 :db 13} :buff-size 1000 :encoder your-encoder}))
+```
+
+Note that `sink` creates a synchronous output, so you probably want to use `async-queue!` and perhaps `batch` events as well:
+```clojure
+(def redis-out
+  (async-queue! :redis {:queue-size 100
+                        :core-pool-size 4
+                        :max-pool-size 4}
+                (redis-output/sink)))
+
+(streams
+ (batch 10 2 redis-out))
 ```
 
 Options:
 - `:conn-spec` - [Carmine](https://github.com/ptaoussanis/carmine) redis connection spec. See Carmine docs for more info
-- `:buff-size` - Size of the internal event queue. Default is 1000. Events will be flushed asyncronously from queue to redis.
-- `:encoder` - A function to convert Riemann event map to a string. Defaults to `cheshire/generate-string` (JSON serialization), see the source for more info. 
+- `:pool-spec` - Carmine connection pool spec, basically apache-commons pool options
+- `:encoder` - A function to convert Riemann event map to a string. Defaults to `cheshire/generate-string` (JSON serialization), see the source for more info.
+- `:key` - The name of the Redis key to output events to. Defaults to `"riemann-events"`
 
 ### Flapjack:
 
