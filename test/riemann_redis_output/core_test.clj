@@ -6,21 +6,7 @@
 (defn rand-str [len]
   (apply str (take len (repeatedly #(char (+ (rand 26) 65))))))
 
-(deftest consume
-  (let [messages (range 100)
-        queue (java.util.concurrent.ArrayBlockingQueue. 1000)]
-    (doseq [msg messages] (.put queue msg))
-    (is 100 (count (#'riemann-redis-output.core/consume-until-empty queue 100))))
-  (let [messages (range 100)
-        queue (java.util.concurrent.ArrayBlockingQueue. 1000)]
-    (doseq [msg messages] (.put queue msg))
-    (is 10 (count (#'riemann-redis-output.core/consume-until-empty queue 10))))
-  (let [messages (range 10)
-        queue (java.util.concurrent.ArrayBlockingQueue. 1000)]
-    (doseq [msg messages] (.put queue msg))
-    (is 10 (count (#'riemann-redis-output.core/consume-until-empty queue 100)))))
-
-(deftest redis-encoder
+(deftest flapjack
   (let [event-prototype {:host (rand-str 10)
                          :service (rand-str 10)
                          :description (rand-str 20)

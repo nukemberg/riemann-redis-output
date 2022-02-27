@@ -1,7 +1,7 @@
 (ns riemann-redis-output.core
   (:require [taoensso.carmine :as car]
             [cheshire.core :as json]
-            [clojure.tools.logging :refer [error debugf]]
+            [clojure.tools.logging :refer [warn debugf]]
             [clojure.set :refer [rename-keys]]
             [riemann.service :refer [Service ServiceEquiv]]
             [riemann.config :refer [service!]]))
@@ -22,32 +22,32 @@
    #(rename-keys % default-rename-keys-map)
    #(into {} (filter (comp not nil? second) %)))) ; remove nil fields before we rename and merge with defaults
 
-(defn- consume-until-empty
-  "Consume messages from a queue until no more are available or `limit` messages have been consumed.
-   Returns a vector of consumed messages"
-  [queue limit]
-  (loop [events [] ^String event (.take queue)] ; blocks until a message is available on channel
-    (if (or (nil? event) (>= (count events) limit))
-      events ; return events we got and end the loop
-      (recur (conj events event) (.poll queue))))) ; try to get more messages from channel
+; for performance reasons we prefer to send events to redis using a pipeline.
+(defn write [redis-conn key encoder events]
+  (let [events (map encoder events)
+        events-batched (partition-all 4 events)] ; apply 
+    (debugf "Flushing %d events to Redis key %s" (count events) key)
+    (try
+      (car/wcar redis-conn
+                (doseq [events events-batched]
+                  (apply car/lpush key events)))
+      (catch Exception e
+        (warn e "Failed to send events to redis")))))
 
-; for performance reasons we prefer to send events to redis using a pipeline. We therefor consume events from the queue in bulks using consume-until-empty
-(defn- redis-flush
-  "Send messages to redis. Consumes messages from queue"
-  [queue server-conn flush-size redis-key]
-  (try
-    (let [events (consume-until-empty queue flush-size)]
-      (debugf "Flushing %d events to Redis" (count events))
-      (car/wcar server-conn
-                (doseq [events (partition-all 4 events)]
-                  (apply car/lpush redis-key events))))
-    (catch Exception e
-      (error e "Failed to send event to redis"))))
+(defn- flusher [running queue flush-size redis-writer]
+  (let [flush-size (dec flush-size)
+        ary (java.util.ArrayList. flush-size)] 
+    (while @running
+      (.clear ary)
+      (let [msg (.take queue)] ; block until queue has messages
+        (.add msg ary)
+        (.drainTo queue ary flush-size) ; drain remaining messages
+        (redis-writer ary)))))
 
 (defprotocol RedisClient
   (send-event [service event]))
 
-(defrecord RedisFlusherService [running core queue buff-size server-conn redis-key transcode]
+(defrecord RedisFlusherService [running core queue buff-size server-conn redis-key encoder]
   ServiceEquiv
   (equiv? [this other] (= [buff-size server-conn] (select-keys other [:buff-size :server-conn])))
   Service
@@ -55,9 +55,9 @@
     (locking this
       (when-not @running
         (reset! running true)
-        (let [new-queue (java.util.concurrent.ArrayBlockingQueue. buff-size)
+        (let [new-queue (java.util.concurrent.ListBlockingQueue. buff-size)
               flush-size (max 40 (int (/ buff-size 2)))
-              flusher-thread (Thread. #(while @running (redis-flush new-queue server-conn flush-size redis-key)))]
+              flusher-thread (Thread. #(flusher running new-queue flush-size (partial write server-conn redis-key encoder)))]
           (.start flusher-thread)
           (reset! queue new-queue)))))
   (stop! [this] (locking this (reset! running false)))
@@ -65,7 +65,7 @@
   (conflict? [this other] (instance? RedisFlusherService other))
   RedisClient
   (send-event [{queue :queue} event]
-    (.put @queue (transcode event))))
+    (.put @queue event)))
 
 (defn output
   "Get an event handler for Redis. This function will start an asyncronous Redis flusher RedisFlusherService.
