@@ -2,6 +2,8 @@
 
 A riemann [Redis](https://redis.io/) plugin.
 
+[![Clojars Project](https://img.shields.io/clojars/v/io.github.nukemberg/riemann-redis-output.svg)](https://clojars.org/io.github.nukemberg/riemann-redis-output)
+
 ## Usage
 
 In your riemann.config
