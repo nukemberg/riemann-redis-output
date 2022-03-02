@@ -1,5 +1,7 @@
 (defproject riemann-redis-output "0.0.2-SNAPSHOT"
   :description "A Riemann plugin to output events to Redis"
+  :url "https://github.com/nukemberg/riemann-redis-output"
+  :license "Apache v2"
   :dependencies [[com.taoensso/carmine "2.15.1" :exclusions [org.clojure/clojure]]]
   :profiles {
   	:dev {:dependencies [[org.clojure/clojure "1.10.3"]
