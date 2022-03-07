@@ -50,5 +50,4 @@
        (write {:pool pool-spec :spec conn-spec} key encoder
               (if (coll? events)
                 events
-                [events])))
-     (partial write {:pool {} :spec conn-spec} key encoder))))
+                [events]))))))
