@@ -20,9 +20,15 @@
    #(rename-keys % default-rename-keys-map)
    #(into {} (filter (comp not nil? second) %)))) ; remove nil fields before we rename and merge with defaults
 
+; byte-arrays need to be raw
+(defn- car-encode [s]
+  (if (bytes? s)
+    (car/raw s)
+    s))
+
 ; for performance reasons we prefer to send events to redis using a pipeline.
 (defn- write [redis-conn key encoder events]
-  (let [events (map encoder events)
+  (let [events (map (comp car-encode encoder) events)
         events-batched (partition-all 4 events)] ; apply 
     (debugf "Flushing %d events to Redis key %s" (count events) key)
     (car/wcar redis-conn
