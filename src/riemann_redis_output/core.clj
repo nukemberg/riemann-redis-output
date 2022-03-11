@@ -20,16 +20,17 @@
    #(rename-keys % default-rename-keys-map)
    #(into {} (filter (comp not nil? second) %)))) ; remove nil fields before we rename and merge with defaults
 
-; byte-arrays need to be raw
+(when-not (ns-resolve 'clojure.core 'bytes?)
+  (def ^:private bytes? (comp not string?)))
+
+; byte-arrays need to be raw; bytes? added in clojure 1.9
 (defn- car-encode [s]
-  (if (bytes? s)
-    (car/raw s)
-    s))
+  (if (bytes? s) (car/raw s) s))
 
 ; for performance reasons we prefer to send events to redis using a pipeline.
 (defn- write [redis-conn key encoder events]
   (let [events (map (comp car-encode encoder) events)
-        events-batched (partition-all 4 events)] ; apply 
+        events-batched (partition-all 4 events)]
     (debugf "Flushing %d events to Redis key %s" (count events) key)
     (car/wcar redis-conn
               (doseq [events events-batched]
