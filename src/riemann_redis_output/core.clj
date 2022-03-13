@@ -20,8 +20,11 @@
    #(rename-keys % default-rename-keys-map)
    #(into {} (filter (comp not nil? second) %)))) ; remove nil fields before we rename and merge with defaults
 
-(when-not (ns-resolve 'clojure.core 'bytes?)
-  (def ^:private bytes? (comp not string?)))
+(defmacro maybe-def [symbol form]
+  (when-not (ns-resolve 'clojure.core symbol)
+    `(def ^:private ~symbol ~form)))
+
+(maybe-def bytes? (comp not string?))
 
 ; byte-arrays need to be raw; bytes? added in clojure 1.9
 (defn- car-encode [s]
