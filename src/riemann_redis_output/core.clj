@@ -14,8 +14,8 @@
   (comp
    json/generate-string
    (partial merge default-event-fields)
-   #(if (nil? (:perfdata %)) % (assoc % :perfdata (format "metric=%f" (float (:perfdata %))))) ; flapjack wants perfdata as nagios string, convert if present
-   #(assoc % :time (int (:time %))) ; flapjack wants time as integer
+   #(if (nil? (:perfdata %)) % (assoc % :perfdata (format "metric=%f" (double (:perfdata %))))) ; flapjack wants perfdata as nagios string, convert if present
+   #(update % :time int) ; flapjack wants time as integer
    #(select-keys % allowed-event-fields) ; flapjack doesn't like fields it doesn't know
    #(rename-keys % default-rename-keys-map)
    #(into {} (filter (comp not nil? second) %)))) ; remove nil fields before we rename and merge with defaults
