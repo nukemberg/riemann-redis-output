@@ -58,6 +58,6 @@
    (let [{:keys [conn-spec key encoder pool-spec]} (merge default-opts opts)]
      (fn [events]
        (write {:pool pool-spec :spec conn-spec} key encoder
-              (if (coll? events)
+              (if (sequential? events)
                 events
                 [events]))))))
