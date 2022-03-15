@@ -8,8 +8,14 @@
                                        [riemann "0.3.8"]]}
              :dev {:dependencies [[clj-test-containers "0.5.0"]]}
              :kaocha {:dependencies [[lambdaisland/kaocha "1.63.998"]]}}
+  :plugins [[camechis/deploy-uberjar "0.3.0"]]
+  :uberjar-name "riemann-redis-output-%s-standalone.jar"
   :aliases {"kaocha" ["with-profile" "+kaocha" "run" "-m" "kaocha.runner"]}
   ; For some reason Leiningen doesn't like fusesource redirect to https 
   :mirrors {"fusesource" "https://repo.fusesource.com/nexus/content/groups/public/"}
   :deploy-repositories {"releases" :clojars
-                        "snapshots" :clojars})
+                        "snapshots" :clojars
+                        "clojars" {:url "https://clojars.org/repo"
+                                   :username :env/CLOJARS_USERNAME
+                                   :password :env/CLOJARS_PASSWORD
+                                   :sign-releases false}})
