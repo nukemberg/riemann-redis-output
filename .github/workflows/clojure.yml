@@ -8,9 +8,7 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - name: Install dependencies
@@ -23,3 +21,14 @@ jobs:
       env:
         CLOJARS_USERNAME: ${{secrets.CLOJARS_USERNAME}}
         CLOJARS_PASSWORD: ${{secrets.CLOJARS_PASSWORD}}
+    - name: Build uberjar
+      run: lein uberjar
+      if: ${{github.ref_name == 'master'}}
+    - name: Deploy to github releases
+      uses: "marvinpinto/action-automatic-releases@latest"
+      if: ${{github.ref_name == 'master'}}
+      with:
+        repo_token: ${{secrets.GITHUB_TOKEN}}
+        files: target/*.jar
+        automatic_release_tag: latest
+
