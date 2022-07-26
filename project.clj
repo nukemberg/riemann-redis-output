@@ -1,4 +1,4 @@
-(defproject io.github.nukemberg/riemann-redis-output "0.0.7"
+(defproject io.github.nukemberg/riemann-redis-output "0.0.8-SNAPSHOT"
   :description "A Riemann plugin to output events to Redis"
   :url "https://github.com/nukemberg/riemann-redis-output"
   :license "Apache v2"
