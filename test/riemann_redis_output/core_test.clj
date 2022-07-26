@@ -3,7 +3,7 @@
             [cheshire.core :refer [parse-string]]
             [riemann-redis-output.core :refer [flapjack-encoder]]))
 
-(defn- rand-str [len]
+(defn rand-str [len]
   (apply str (take len (repeatedly #(char (+ (rand 26) 65))))))
 
 (deftest flapjack

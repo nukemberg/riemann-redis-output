@@ -42,7 +42,8 @@ Options:
 - `:conn-spec` - [Carmine](https://github.com/ptaoussanis/carmine) redis connection spec. See Carmine docs for more info
 - `:pool-spec` - Carmine connection pool spec, basically apache-commons pool options
 - `:encoder` - A function to convert Riemann event map to a string. Defaults to `cheshire/generate-string` (JSON serialization), see the source for more info.
-- `:key` - The name of the Redis key to output events to. Defaults to `"riemann-events"`
+- `:key` - The Redis key to output events to. Defaults to `"riemann-events"`
+- `:key-fn` - A function to compute the Redis key from event; Overrides `:key`  
 
 ### Flapjack:
 

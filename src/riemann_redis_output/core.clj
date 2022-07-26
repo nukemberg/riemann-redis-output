@@ -51,13 +51,15 @@
   :conn-spec - Carmine spec, e.g. {:host \"redisserver\" :port 6379 :db 13}, see Carmine for details
   :pool-spec - Carmin pool spec (Apache commons pool options). See Carmine for details
   :key - Redis key to push events to
+  :key-fn - A function to compute the Redis key from event; overrides `:key`. Signature (fn [event]) -> String
   :encoder - the encoding function to convert event map to a string. Signature: (fn [event]) -> String. Defaults to cheshire/generate-string
   "
   ([] (sink {}))
   ([opts]
-   (let [{:keys [conn-spec key encoder pool-spec]} (merge default-opts opts)]
+   (let [{:keys [conn-spec key key-fn encoder pool-spec]} (merge default-opts opts)
+         key-fn (or key-fn (constantly key))]
      (fn [events]
-       (write {:pool pool-spec :spec conn-spec} key encoder
-              (if (sequential? events)
-                events
-                [events]))))))
+       (let [events (if (sequential? events) events [events])
+             events-by-keys (group-by key-fn events)]
+         (doseq [[key events] events-by-keys]
+           (write {:pool pool-spec :spec conn-spec} key encoder events)))))))
